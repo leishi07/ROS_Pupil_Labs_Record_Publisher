@@ -4,6 +4,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <sstream>
+#include <fstream>
 #include <string>
 
 std::vector<cv::Mat> video_to_img(std::string video_path)
@@ -29,7 +30,85 @@ std::vector<cv::Mat> video_to_img(std::string video_path)
 	//cv::destroyWindow("Frame");
 	video_loaded = true;
 	return images;
-};
+}
+
+std::vector<cv::Point2f> format_pupil_labs_gaze(std::string gaze_path)
+{
+	std::vector<cv::Point2f> gaze;
+	std::ifstream ifs (gaze_path.c_str());
+	std::string line;
+	std::vector<std::vector<std::string> > values, new_values;
+	while(std::getline(ifs, line))
+	{
+	  std::string line_value;
+	  std::vector<std::string> line_values;
+	  std::stringstream ss(line);
+	  while(std::getline(ss, line_value, ','))
+	  {
+	    line_values.push_back(line_value);
+	  }
+	  values.emplace_back(line_values);
+	}
+  for(int i=1; i<values.size(); i++)
+	{
+		if(i<values.size()-1)
+		{
+			if( std::stod(values[i][1])!= std::stod(values[i+1][1]))
+			{
+				new_values.push_back(values[i]);
+			}
+		}
+		if(i==values.size()-1)
+		{
+			new_values.push_back(values[i]);
+		}
+	}
+	ifs.close();
+	
+	for(int j=0;j<new_values.size();j++)
+	{
+		gaze.push_back( cv::Point2f(std::stof(new_values[j][3]), std::stof(new_values[j][4])) );
+		//std::cout<<"x: "<<new_values[j][3]<<" y: "<<new_values[j][4]<<std::endl;
+	}
+	return gaze;
+}
+
+std::vector<cv::Point2f> format_pupil_labs_fixation(std::string fixation_path)
+{
+	std::vector<cv::Point2f> fixation;
+	std::ifstream ifs (fixation_path.c_str());
+	std::string line;
+	std::vector<std::vector<std::string> > values, new_values;
+	while(std::getline(ifs, line))
+	{
+	  std::string line_value;
+	  std::vector<std::string> line_values;
+	  std::stringstream ss(line);
+	  while(std::getline(ss, line_value, ','))
+	  {
+	    line_values.push_back(line_value);
+	  }
+	  values.emplace_back(line_values);
+	}
+	int index = 1;
+  for(int i=0; i<std::stoi(values[values.size()-1][4]); i++)
+	{
+		if(i>=std::stod(values[index][3]) && i<=std::stod(values[index][4]))
+		{
+			fixation.push_back(cv::Point2f(std::stod(values[index][5]), std::stod(values[index][6])) );
+		}
+		else
+		{
+			if(i>std::stod(values[index][4]))
+			{
+				index += 1;
+			}
+			fixation.push_back(cv::Point2f(0.0, 0.0));
+		}	
+	}
+	ifs.close();
+	return fixation;
+}
 
 int main(int argc, char** argv)
 {
@@ -53,7 +132,7 @@ int main(int argc, char** argv)
 
 	nh.param("fixation_path", fixation_path, std::string(""));
 	fixation_path += "/fixations.csv";
-	//std::cout<<gaze_path.c_str()<<std::endl;
+	std::cout<<gaze_path.c_str()<<std::endl;
 
 	//publishers
   image_transport::ImageTransport it(nh);
@@ -69,30 +148,45 @@ int main(int argc, char** argv)
 	std::vector<cv::Mat> images = video_to_img(video_path);
 
 	//load gaze data
-	
+	std::vector<cv::Point2f> gaze_pos = format_pupil_labs_gaze(gaze_path.c_str());
 	
 	//load fixation data
-	
+	std::vector<cv::Point2f> fixation_pos = format_pupil_labs_fixation(fixation_path);
 
   ros::Rate loop_rate(50);
 	int index = 0;
+	int length = std::min({images.size(), gaze_pos.size()});
   while (nh.ok()) 
 	{
 		//std::cout<<"iter"<<index<<std::endl;
-		if(index < images.size())
+		if(index < length)
 		{
+			if(index < fixation_pos.size())
+			{
+				if(fixation_pos[index].x != 0.0)
+				{
+					msg_fixation.point.x = fixation_pos[index].x;
+					msg_fixation.point.y = fixation_pos[index].y;
+					msg_fixation.header.stamp = ros::Time::now();
+					pub_fixation.publish(msg_fixation);
+				}
+			}
+	
 			msg_img = cv_bridge::CvImage(std_msgs::Header(), "bgr8", images[index]).toImageMsg();
 			msg_img->header.stamp = ros::Time::now();
+
+			msg_gaze_std.point.x = gaze_pos[index].x;
+			msg_gaze_std.point.y = gaze_pos[index].y;
+			msg_gaze_std.header.stamp = ros::Time::now();
 		}
 		else
 		{	
-			std::cout<<"all images published."<<std::endl;
+			std::cout<<"all messages published."<<std::endl;
 			break;
 		}
     pub_img.publish(msg_img);
-		//pub_gaze.publish(msg_gaze_std);
-		//pub_fixation.publish(msg_fixation);
-		
+		pub_gaze.publish(msg_gaze_std);
+
 		index += 1;
     ros::spinOnce();
     loop_rate.sleep();
