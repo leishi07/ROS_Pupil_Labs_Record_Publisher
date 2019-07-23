@@ -14,7 +14,7 @@ From your Pupil Labs recording export directory, copy the following files into f
 `gaze_positions.csv` \
 `fixation_positions.csv`
 
-You can change the directory by modifying the path in ROS launch file `record_pub.launch`
+You can change the directory by modifying the path in ROS launch file `launch/record_pub.launch`
 
 To start the node:
 
