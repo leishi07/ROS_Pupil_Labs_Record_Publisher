@@ -22,11 +22,11 @@ To start the node:
 
 # ROS Topcis
 
-**</pupil_capture/world>** \
-Publishes the image of the world camera.
+`/pupil_capture/world` \
+Publishes the image of the world camera. Message type is `sensor_msgs/Image`
 
-**</pupil_capture/gaze_std>** \
+`/pupil_capture/gaze_std` \
 Publishes the normalized gaze positions. Message type is `geometry_msgs/PointStamped`
 
-**</pupil_capture/fixation>** \
+`/pupil_capture/fixation` \
 Publishes the fixation positions. Message type is `geometry_msgs/PointStamped`
