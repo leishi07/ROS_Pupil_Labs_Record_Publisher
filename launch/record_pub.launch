@@ -2,13 +2,11 @@
 
   <arg name="launch_prefix" default=""/>
   <arg name="video_path"          default="$(find record_pub)/gaze_record/pupil_labs"/>
-  <arg name="image_path"          default="$(find record_pub)/gaze_record/img"/>
   <arg name="gaze_path"           default="$(find record_pub)/gaze_record/pupil_labs"/>
   <arg name="fixation_path"       default="$(find record_pub)/gaze_record/pupil_labs"/>
 
   <node pkg="record_pub" type="record_pub" name="record_pub" output="screen" launch-prefix="$(arg launch_prefix)">
     <param name="video_path"          value="$(arg video_path)" />
-    <param name="image_path"          value="$(arg image_path)" />
     <param name="gaze_path"           value="$(arg gaze_path)" />
     <param name="fixation_path"       value="$(arg fixation_path)" />
   </node>
